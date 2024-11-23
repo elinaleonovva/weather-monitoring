@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:15  # Используем официальный образ
+    ports:
+      - "5432:5432"  # Пробрасываем порт для доступа к БД
+    environment:
+      POSTGRES_USER: admin           # Создаём пользователя
+      POSTGRES_PASSWORD: adminpassword  # Устанавливаем пароль
+      POSTGRES_DB: weather_history   # Создаём базу данных
+    volumes:
+      - history-db:/var/lib/postgresql/data
+    networks:
+      - weather-network
+  client:
+    build: ./client
+    ports:
+      - "3000:80"  # Перенаправляем локальный порт 3000 на порт 80 внутри контейнера
+    networks:
+      - weather-network
+
+  weather-api-server:
+    build: ./weather-api-server
+    ports:
+      - "5000:5000"
+    networks:
+      - weather-network
+    environment:
+      - WEATHER_API_KEY=${WEATHER_API_KEY}
+
+  history-server:
+    build: ./history-server
+    ports:
+      - "5001:5001"
+    networks:
+      - weather-network
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=weather_history
+      - DB_USER=admin
+      - DB_PASSWORD=adminpassword
+
+  nginx:
+    build: ./nginx
+    ports:
+      - "80:80"
+    networks:
+      - weather-network
+    depends_on:
+      - weather-api-server
+      - history-server
+
+networks:
+  weather-network:
+
+volumes:
+  history-db:
